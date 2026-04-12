@@ -1,25 +1,48 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// This helper ensures we don't have double slashes like //api
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+const API = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
 export default function Setup() {
   const navigate = useNavigate();
   const [gender, setGender] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleCompleteSetup = (e) => {
+  const handleCompleteSetup = async (e) => {
     e.preventDefault();
     if (!gender) return;
+
     setIsSaving(true);
-    fetch(`${API}/api/user/update-gender`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gender }),
-    })
-      .then(() => navigate("/dashboard"))
-      .catch(() => setIsSaving(false));
+    try {
+      // Changed to update_gender to match your backend logs
+      const response = await fetch(`${API}/api/user/update_gender`, {
+        method: "POST",
+        credentials: "include", // Essential for sending the session cookie
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ gender }),
+      });
+
+      if (response.ok) {
+        console.log("Setup successful!");
+        navigate("/dashboard");
+      } else if (response.status === 401 || response.status === 403) {
+        console.error("Session expired or unauthorized. Please log in again.");
+        alert("Session expired. Please refresh and log in again.");
+      } else {
+        const errorData = await response.text();
+        console.error("Server error:", errorData);
+        alert("Failed to save. Check console for details.");
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+      alert("Network error. Is the backend running?");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const options = [
@@ -110,7 +133,9 @@ export default function Setup() {
                     gap: "14px",
                     padding: "16px",
                     borderRadius: "10px",
-                    border: `2px solid ${gender === opt.value ? "#111827" : "#e5e7eb"}`,
+                    border: `2px solid ${
+                      gender === opt.value ? "#111827" : "#e5e7eb"
+                    }`,
                     backgroundColor:
                       gender === opt.value ? "#f9fafb" : "#ffffff",
                     cursor: "pointer",
