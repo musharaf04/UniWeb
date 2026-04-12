@@ -17,7 +17,7 @@ export default function Setup() {
     setIsSaving(true);
     try {
       // Changed to update_gender to match your backend logs
-      const response = await fetch(`${API}/api/user/update_gender`, {
+      const response = await fetch(`${API}/api/user/update-gender`, {
         method: "POST",
         credentials: "include", // Essential for sending the session cookie
         headers: {
