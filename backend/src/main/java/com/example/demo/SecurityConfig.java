@@ -3,8 +3,10 @@ package com.example.demo;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
@@ -25,6 +27,12 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private JwtUtil jwtUtil; // NEW
+
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter; // NEW
+
     @Value("${frontend.url}")
     private String frontendUrl;
 
@@ -33,10 +41,16 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
+
+                // NEW: SWITCH TO STATELESS FOR iPHONE SUPPORT
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/login/**", "/oauth2/**", "/api/user/active-count").permitAll()
+                        .requestMatchers("/", "/login/**", "/oauth2/**", "/api/user/active-count", "/auth-success")
+                        .permitAll()
                         .anyRequest().authenticated())
-                
+
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
@@ -51,14 +65,12 @@ public class SecurityConfig {
 
                             logger.info(">>> [AUTH] Google Login Success for: {}", email);
 
-                            // --- REMOVED THE WHITELIST CHECK ---
-                            // Now every email that finishes Google Auth is allowed to proceed.
-
                             try {
                                 Optional<User> existingUserOpt = userRepository.findByEmail(email);
+                                String targetPath = "/dashboard"; // Default
 
                                 if (existingUserOpt.isEmpty()) {
-                                    logger.info(">>> [DATABASE] Creating new public account for: {}", email);
+                                    logger.info(">>> [DATABASE] Creating new account for: {}", email);
                                     User newUser = new User();
                                     newUser.setEmail(email);
                                     newUser.setName(name);
@@ -74,16 +86,22 @@ public class SecurityConfig {
 
                                     newUser.setId(generatedId);
                                     userRepository.save(newUser);
-                                    response.sendRedirect(frontendUrl + "/setup");
+                                    targetPath = "/setup";
                                 } else {
                                     User existingUser = existingUserOpt.get();
-                                    // If they haven't picked a hostel yet, send them to setup
-                                    if (existingUser.getGender() == null || existingUser.getGender().equals("Pending")) {
-                                        response.sendRedirect(frontendUrl + "/setup");
-                                    } else {
-                                        response.sendRedirect(frontendUrl + "/dashboard");
+                                    if (existingUser.getGender() == null
+                                            || existingUser.getGender().equals("Pending")) {
+                                        targetPath = "/setup";
                                     }
                                 }
+
+                                // NEW: GENERATE THE TOKEN
+                                String token = jwtUtil.generateToken(email);
+
+                                // NEW: REDIRECT TO SAVE TOKEN, THEN GO TO TARGET PATH
+                                response.sendRedirect(
+                                        frontendUrl + "/auth-success?token=" + token + "&redirect=" + targetPath);
+
                             } catch (Exception e) {
                                 logger.error(">>> [ERROR] Auth Sync Failure: {}", e.getMessage());
                                 response.sendRedirect(frontendUrl + "/error");
@@ -92,9 +110,10 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl(frontendUrl + "/")
-                        .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
                         .permitAll());
+
+        // NEW: ADD THE JWT BOUNCER
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -106,6 +125,8 @@ public class SecurityConfig {
                 "https://campus-express-three.vercel.app",
                 frontendUrl));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+
+        // ADDED "Authorization" TO THE HEADERS LIST
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cookie", "X-Requested-With"));
         configuration.setAllowCredentials(true);
 

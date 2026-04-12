@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-// This helper ensures we don't have double slashes like //api
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 const API = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
 
@@ -14,14 +13,19 @@ export default function Setup() {
     e.preventDefault();
     if (!gender) return;
 
+    const token = localStorage.getItem("token"); // Grab the passport
+    if (!token) {
+      navigate("/");
+      return;
+    }
+
     setIsSaving(true);
     try {
-      // Changed to update_gender to match your backend logs
       const response = await fetch(`${API}/api/user/update-gender`, {
         method: "POST",
-        credentials: "include", // Essential for sending the session cookie
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Send the passport here
         },
         body: JSON.stringify({ gender }),
       });
@@ -30,8 +34,8 @@ export default function Setup() {
         console.log("Setup successful!");
         navigate("/dashboard");
       } else if (response.status === 401 || response.status === 403) {
-        console.error("Session expired or unauthorized. Please log in again.");
-        alert("Session expired. Please refresh and log in again.");
+        localStorage.removeItem("token"); // Clear bad token
+        navigate("/");
       } else {
         const errorData = await response.text();
         console.error("Server error:", errorData);
@@ -133,9 +137,7 @@ export default function Setup() {
                     gap: "14px",
                     padding: "16px",
                     borderRadius: "10px",
-                    border: `2px solid ${
-                      gender === opt.value ? "#111827" : "#e5e7eb"
-                    }`,
+                    border: `2px solid ${gender === opt.value ? "#111827" : "#e5e7eb"}`,
                     backgroundColor:
                       gender === opt.value ? "#f9fafb" : "#ffffff",
                     cursor: "pointer",
@@ -191,7 +193,6 @@ export default function Setup() {
                 </label>
               ))}
             </div>
-
             <div
               style={{
                 backgroundColor: "#fef9c3",
@@ -206,7 +207,6 @@ export default function Setup() {
             >
               ⚠️ This choice is permanent and cannot be changed later.
             </div>
-
             <button
               type="submit"
               disabled={!gender || isSaving}

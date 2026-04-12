@@ -4,6 +4,7 @@ import Setup from "./pages/Setup";
 import Dashboard from "./pages/Dashboard";
 import OrderPlacement from "./pages/OrderPlacement";
 import OrderChat from "./pages/OrderChat"; // <-- Added this import!
+import AuthSuccess from "./pages/AuthSuccess";
 
 function App() {
   return (
@@ -41,6 +42,8 @@ function App() {
             </h2>
           }
         />
+
+        <Route path="/auth-success" element={<AuthSuccess />} />
       </Routes>
     </BrowserRouter>
   );

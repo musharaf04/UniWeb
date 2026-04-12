@@ -88,6 +88,7 @@ const Btn = ({
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token"); // 🔑 Get JWT from storage
 
   const [userData, setUserData] = useState(null);
   const [availableOrders, setAvailable] = useState([]);
@@ -113,7 +114,13 @@ export default function Dashboard() {
   const chatEndRef = useRef(null);
   const prevHandshakeRef = useRef(null);
   const prevActiveRef = useRef(null);
-  const prevChatLengthRef = useRef(0); // ✅ Fixes the blank screen crash
+  const prevChatLengthRef = useRef(0);
+
+  // ── JWT Auth Header Helper ──
+  const getAuthHeaders = () => ({
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  });
 
   // ── notifications ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -127,13 +134,11 @@ export default function Dashboard() {
   }, []);
 
   const notify = (title, body) => {
-    // Play sound on every alert
     const audio = new Audio("/alert.mp3");
     audio.play().catch(() => console.log("Audio play blocked by browser"));
 
     if ("vibrate" in navigator) navigator.vibrate([200, 100, 200]);
 
-    // Only show system popup if the window is minimized or user is on another tab
     if (
       document.hidden &&
       "Notification" in window &&
@@ -146,24 +151,35 @@ export default function Dashboard() {
     }
   };
 
-  // ── data fetching ──────────────────────────────────────────────────────
+  // ── data fetching (Updated for JWT) ──────────────────────────────────────
   const fetchData = () => {
-    fetch(`${API}/api/user/me`, { credentials: "include" })
-      .then((r) => r.json())
+    if (!token) {
+      navigate("/");
+      return;
+    }
+
+    fetch(`${API}/api/user/me`, { headers: getAuthHeaders() })
+      .then((r) => {
+        if (r.status === 401) throw new Error("Unauthorized");
+        return r.json();
+      })
       .then((data) => {
         setUserData(data);
         if (data.delivering) {
-          fetch(`${API}/api/orders/available`, { credentials: "include" })
+          fetch(`${API}/api/orders/available`, { headers: getAuthHeaders() })
             .then((r) => r.json())
             .then(setAvailable);
         }
-        fetch(`${API}/api/orders/my-deliveries`, { credentials: "include" })
+        fetch(`${API}/api/orders/my-deliveries`, { headers: getAuthHeaders() })
           .then((r) => r.json())
           .then(setMyDeliveries);
       })
-      .catch(() => navigate("/"));
+      .catch(() => {
+        localStorage.removeItem("token");
+        navigate("/");
+      });
 
-    fetch(`${API}/api/orders/my-orders`, { credentials: "include" })
+    fetch(`${API}/api/orders/my-orders`, { headers: getAuthHeaders() })
       .then((r) => r.json())
       .then(setMyOrders);
   };
@@ -180,12 +196,12 @@ export default function Dashboard() {
   const activeOrder = orderAsCustomer || orderAsDeliverer;
   const handshake = myOrders.find((o) => o.status === "APPROVAL_PENDING");
 
-  // ── live chat ──────────────────────────────────────────────────────────
+  // ── live chat (Updated for JWT) ──────────────────────────────────────────
   useEffect(() => {
     if (!activeOrder) return;
     const poll = () => {
       fetch(`${API}/api/orders/${activeOrder.id}/chat`, {
-        credentials: "include",
+        headers: getAuthHeaders(),
       })
         .then((r) => r.json())
         .then(setActiveChat);
@@ -195,7 +211,6 @@ export default function Dashboard() {
     return () => clearInterval(t);
   }, [activeOrder?.id]);
 
-  // ✅ Updated Scroll and Chat Notification Logic
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -218,19 +233,18 @@ export default function Dashboard() {
     if (!chatInput.trim()) return;
     fetch(`${API}/api/orders/${activeOrder.id}/chat/send`, {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ text: chatInput }),
     }).then(() => setChatInput(""));
   };
 
-  // ── heartbeat ──────────────────────────────────────────────────────────
+  // ── heartbeat (Updated for JWT) ──────────────────────────────────────────
   useEffect(() => {
     if (!userData?.delivering) return;
     const pulse = () =>
       fetch(`${API}/api/user/heartbeat`, {
         method: "POST",
-        credentials: "include",
+        headers: getAuthHeaders(),
       }).catch(() => {});
     pulse();
     const t = setInterval(pulse, 10000);
@@ -250,19 +264,19 @@ export default function Dashboard() {
     prevActiveRef.current = activeOrder;
   }, [activeOrder]);
 
-  // ── handlers ──────────────────────────────────────────────────────────
+  // ── handlers (Updated for JWT) ──────────────────────────────────────────
   const handleHandshake = (id, accept) => {
     const action = accept ? "confirm-handshake" : "reject-handshake";
     fetch(`${API}/api/orders/${action}/${id}`, {
       method: "POST",
-      credentials: "include",
+      headers: getAuthHeaders(),
     }).then(fetchData);
   };
 
   const toggleDelivery = () => {
     fetch(`${API}/api/user/toggle-delivery`, {
       method: "POST",
-      credentials: "include",
+      headers: getAuthHeaders(),
     })
       .then((r) => r.json())
       .then(setUserData);
@@ -272,8 +286,7 @@ export default function Dashboard() {
     e.preventDefault();
     fetch(`${API}/api/orders/propose/${proposeModal.id}`, {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({
         currentLocation: proposeDetails.location,
         estTime: `${proposeDetails.etaVal} ${proposeDetails.etaUnit}`,
@@ -295,8 +308,7 @@ export default function Dashboard() {
     if (otpInput.length !== 4) return;
     fetch(`${API}/api/orders/complete/${activeOrder.id}`, {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ otp: otpInput }),
     }).then(async (res) => {
       if (res.ok) {
@@ -308,6 +320,12 @@ export default function Dashboard() {
         setOtpError(d.error || "Incorrect code. Try again.");
       }
     });
+  };
+
+  // ── Updated Sign Out Logic ──
+  const handleSignOut = () => {
+    localStorage.removeItem("token"); // 🔑 Destroy the JWT
+    navigate("/");
   };
 
   if (!userData)
@@ -593,7 +611,6 @@ export default function Dashboard() {
               >
                 Your current location
               </label>
-
               <input
                 required
                 placeholder="e.g. Library, TT ground floor"
@@ -615,10 +632,9 @@ export default function Dashboard() {
                   outline: "none",
                   fontFamily: F,
                   backgroundColor: "#374151",
-                  color: "#ffffff", // ✅ Fixed invisible text
+                  color: "#ffffff",
                 }}
               />
-
               <label
                 style={{
                   fontSize: "13px",
@@ -654,10 +670,9 @@ export default function Dashboard() {
                     boxSizing: "border-box",
                     fontFamily: F,
                     backgroundColor: "#374151",
-                    color: "#ffffff", // ✅ Fixed invisible text
+                    color: "#ffffff",
                   }}
                 />
-
                 <select
                   value={proposeDetails.etaUnit}
                   onChange={(e) =>
@@ -870,8 +885,6 @@ export default function Dashboard() {
                 ✕
               </button>
             </div>
-
-            {/* Avatar */}
             <div
               style={{
                 width: "52px",
@@ -917,8 +930,6 @@ export default function Dashboard() {
             >
               ID #{userData.id}
             </div>
-
-            {/* Points */}
             <div
               style={{
                 backgroundColor: "#f8f9fa",
@@ -943,7 +954,6 @@ export default function Dashboard() {
                 {userData.points}
               </span>
             </div>
-
             <button
               onClick={() => {
                 setShowHistory(true);
@@ -964,23 +974,25 @@ export default function Dashboard() {
             >
               Order history
             </button>
-
             <div style={{ flex: 1 }} />
-
-            <a
-              href={`${API}/logout`}
+            <button
+              onClick={handleSignOut}
               style={{
                 display: "block",
                 padding: "12px 0",
                 color: "#dc2626",
                 fontWeight: "600",
                 fontSize: "14px",
-                textDecoration: "none",
+                border: "none",
                 borderTop: "1px solid #f3f4f6",
+                backgroundColor: "transparent",
+                textAlign: "left",
+                cursor: "pointer",
+                fontFamily: F,
               }}
             >
               Sign out
-            </a>
+            </button>
           </div>
         </>
       )}
@@ -1025,7 +1037,6 @@ export default function Dashboard() {
           />
           <div style={{ width: "14px", borderTop: "2px solid currentColor" }} />
         </button>
-
         <span
           style={{
             fontWeight: "700",
@@ -1036,7 +1047,6 @@ export default function Dashboard() {
         >
           Campus Express
         </span>
-
         <div
           style={{
             backgroundColor: "#f1f5f9",
@@ -1051,11 +1061,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Main content ── */}
       <div
         style={{ maxWidth: "600px", margin: "0 auto", padding: "24px 16px" }}
       >
-        {/* Greeting */}
         <div style={{ marginBottom: "24px" }}>
           <h2
             style={{
@@ -1073,7 +1081,6 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* ── Active order card ── */}
         {activeOrder && (
           <Card style={{ marginBottom: "20px", border: "1px solid #d1fae5" }}>
             <div
@@ -1117,8 +1124,6 @@ export default function Dashboard() {
                     : `Customer #${activeOrder.user.id}`}
                 </div>
               </div>
-
-              {/* OTP display for customer */}
               {orderAsCustomer && (
                 <div
                   style={{
@@ -1153,8 +1158,6 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-
-            {/* Order details */}
             <div
               style={{
                 backgroundColor: "#f8f9fa",
@@ -1174,8 +1177,6 @@ export default function Dashboard() {
                 {activeOrder.pickupAddress} → {activeOrder.deliveryAddress}
               </div>
             </div>
-
-            {/* Chat */}
             <div
               style={{
                 border: "1px solid #e5e7eb",
@@ -1219,7 +1220,6 @@ export default function Dashboard() {
                     Send a message to coordinate.
                   </p>
                 )}
-                {/* ✅ HIDDEN NAMES IN CHAT BUBBLES */}
                 {activeChat.map((msg, i) => {
                   const isMe = msg.email === userData.email;
                   return (
@@ -1260,7 +1260,6 @@ export default function Dashboard() {
                   backgroundColor: "#fafafa",
                 }}
               >
-                {/* ✅ FIXED CHAT INPUT TEXT COLOR */}
                 <input
                   style={{
                     flex: 1,
@@ -1295,8 +1294,6 @@ export default function Dashboard() {
                 </button>
               </form>
             </div>
-
-            {/* Deliverer finish button */}
             {!orderAsCustomer && (
               <Btn variant="green" onClick={openOtp} style={{ width: "100%" }}>
                 Mark as Delivered
@@ -1305,7 +1302,6 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* ── Action buttons (no active order) ── */}
         {!activeOrder && (
           <div
             style={{
@@ -1315,7 +1311,6 @@ export default function Dashboard() {
               marginBottom: "24px",
             }}
           >
-            {/* Place order */}
             <button
               onClick={() => navigate("/order-placement")}
               style={{
@@ -1343,8 +1338,6 @@ export default function Dashboard() {
                 Request a delivery partner
               </div>
             </button>
-
-            {/* Toggle delivery status */}
             <button
               onClick={toggleDelivery}
               style={{
@@ -1379,7 +1372,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ── Marketplace ── */}
         {userData.delivering && !activeOrder && (
           <div>
             <div
@@ -1404,7 +1396,6 @@ export default function Dashboard() {
                 {availableOrders.length} nearby
               </span>
             </div>
-
             {availableOrders.length === 0 ? (
               <Card style={{ textAlign: "center", padding: "32px 20px" }}>
                 <div style={{ fontSize: "28px", marginBottom: "10px" }}>📭</div>
