@@ -14,7 +14,6 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Optional;
 import java.util.Arrays;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,23 +28,15 @@ public class SecurityConfig {
     @Value("${frontend.url}")
     private String frontendUrl;
 
-    private final List<String> ALLOWED_EMAILS = List.of(
-            "musharafshaik2004@gmail.com",
-            "1011musharaf@gmail.com",
-            "munna1110004@gmail.com");
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/login/**", "/oauth2/**").permitAll()
+                        .requestMatchers("/", "/login/**", "/oauth2/**", "/api/user/active-count").permitAll()
                         .anyRequest().authenticated())
-
-                // --- NEW: THE ANTI-REDIRECT GUARD ---
-                // This prevents the backend from sending a "302 Redirect" during API calls.
-                // It will send a "401 Unauthorized" instead, which your React app can handle.
+                
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
@@ -58,19 +49,16 @@ public class SecurityConfig {
                             String name = oAuth2User.getAttribute("name");
                             String googleId = oAuth2User.getAttribute("sub");
 
-                            logger.info(">>> [AUTH] Google Auth Success for: {}", email);
+                            logger.info(">>> [AUTH] Google Login Success for: {}", email);
 
-                            if (!ALLOWED_EMAILS.contains(email)) {
-                                logger.warn(">>> [SECURITY] Blocked unauthorized email attempt: {}", email);
-                                request.getSession().invalidate();
-                                response.sendRedirect(frontendUrl + "/unauthorized");
-                                return;
-                            }
+                            // --- REMOVED THE WHITELIST CHECK ---
+                            // Now every email that finishes Google Auth is allowed to proceed.
 
                             try {
                                 Optional<User> existingUserOpt = userRepository.findByEmail(email);
 
                                 if (existingUserOpt.isEmpty()) {
+                                    logger.info(">>> [DATABASE] Creating new public account for: {}", email);
                                     User newUser = new User();
                                     newUser.setEmail(email);
                                     newUser.setName(name);
@@ -89,15 +77,15 @@ public class SecurityConfig {
                                     response.sendRedirect(frontendUrl + "/setup");
                                 } else {
                                     User existingUser = existingUserOpt.get();
-                                    if (existingUser.getGender() == null
-                                            || existingUser.getGender().equals("Pending")) {
+                                    // If they haven't picked a hostel yet, send them to setup
+                                    if (existingUser.getGender() == null || existingUser.getGender().equals("Pending")) {
                                         response.sendRedirect(frontendUrl + "/setup");
                                     } else {
                                         response.sendRedirect(frontendUrl + "/dashboard");
                                     }
                                 }
                             } catch (Exception e) {
-                                logger.error(">>> [ERROR] Auth Logic Failure: {}", e.getMessage());
+                                logger.error(">>> [ERROR] Auth Sync Failure: {}", e.getMessage());
                                 response.sendRedirect(frontendUrl + "/error");
                             }
                         }))
@@ -114,12 +102,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-
-        // Trust both the direct URL and whatever is in your properties
         configuration.setAllowedOrigins(Arrays.asList(
                 "https://campus-express-three.vercel.app",
                 frontendUrl));
-
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cookie", "X-Requested-With"));
         configuration.setAllowCredentials(true);
