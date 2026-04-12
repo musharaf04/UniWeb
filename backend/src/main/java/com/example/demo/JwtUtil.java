@@ -4,14 +4,18 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
-
 import java.security.Key;
 import java.util.Date;
+import java.util.Base64;
 
 @Component
 public class JwtUtil {
-    // In a real app, move this to Environment Variables
-    private final Key key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+
+    // Use a fixed 256-bit string. In production, move this to an Environment
+    // Variable!
+    private final String SECRET_KEY_STRING = "CampusExpressSuperSecretKeyForJWTAuth2026!!!!";
+    private final Key key = Keys.hmacShaKeyFor(SECRET_KEY_STRING.getBytes());
+
     private final int expirationMs = 86400000; // 24 hours
 
     public String generateToken(String email) {

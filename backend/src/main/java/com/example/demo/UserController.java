@@ -20,29 +20,39 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    // --- NEW HELPER METHOD TO SUPPORT BOTH OLD & NEW AUTH ---
+    private String getEmail(Object principal) {
+        if (principal instanceof OAuth2User) {
+            return ((OAuth2User) principal).getAttribute("email");
+        } else if (principal instanceof String) {
+            return (String) principal;
+        }
+        return null;
+    }
+
     @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal OAuth2User oauth2User) {
-        if (oauth2User == null) {
+    public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return userService.getUserByEmail(oauth2User.getAttribute("email"))
+        return userService.getUserByEmail(email)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
     @PostMapping("/update-gender")
     public ResponseEntity<?> updateGender(@RequestBody Map<String, String> payload,
-            @AuthenticationPrincipal OAuth2User principal) {
+            @AuthenticationPrincipal Object principal) {
 
-        // Log to Render console so you can see if the request arrived
         logger.info(">>> [API] Received update-gender request. Payload: {}", payload);
 
-        if (principal == null) {
-            logger.warn(">>> [API] update-gender failed: No authenticated user (Session missing)");
+        String email = getEmail(principal);
+        if (email == null) {
+            logger.warn(">>> [API] update-gender failed: No authenticated user (Principal is null)");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Session expired");
         }
 
-        String email = principal.getAttribute("email");
         String gender = payload.get("gender");
 
         return userService.updateGender(email, gender)
@@ -57,10 +67,12 @@ public class UserController {
     }
 
     @PostMapping("/toggle-delivery")
-    public ResponseEntity<?> toggleDeliveryStatus(@AuthenticationPrincipal OAuth2User principal) {
-        if (principal == null)
+    public ResponseEntity<?> toggleDeliveryStatus(@AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        return userService.toggleDelivery(principal.getAttribute("email"))
+
+        return userService.toggleDelivery(email)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
@@ -71,10 +83,12 @@ public class UserController {
     }
 
     @PostMapping("/heartbeat")
-    public ResponseEntity<?> heartbeat(@AuthenticationPrincipal OAuth2User principal) {
-        if (principal == null)
+    public ResponseEntity<?> heartbeat(@AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        userService.heartbeat(principal.getAttribute("email"));
+
+        userService.heartbeat(email);
         return ResponseEntity.ok().build();
     }
 }
