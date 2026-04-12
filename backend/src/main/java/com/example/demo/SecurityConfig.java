@@ -9,9 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
-import java.util.Optional;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Optional;
 import java.util.Arrays;
 import java.util.List;
 import org.slf4j.Logger;
@@ -25,12 +25,9 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
-    // Pulls the URL from application.properties (Vercel URL in prod, localhost in
-    // dev)
     @Value("${frontend.url}")
     private String frontendUrl;
 
-    // --- 1. THE GATEKEEPER LIST ---
     private final List<String> ALLOWED_EMAILS = List.of(
             "musharafshaik2004@gmail.com",
             "1011musharaf@gmail.com",
@@ -41,13 +38,9 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-
-                // --- 2. PERMISSIONS ---
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/").permitAll()
+                        .requestMatchers("/", "/login/**", "/oauth2/**").permitAll()
                         .anyRequest().authenticated())
-
-                // --- 3. GOOGLE LOGIN ---
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler((request, response, authentication) -> {
                             OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
@@ -57,7 +50,6 @@ public class SecurityConfig {
 
                             logger.info(">>> [AUTH] Google Auth Success for: {}", email);
 
-                            // --- STEP 1: WHITELIST CHECK ---
                             if (!ALLOWED_EMAILS.contains(email)) {
                                 logger.warn(">>> [SECURITY] Blocked unauthorized email attempt: {}", email);
                                 request.getSession().invalidate();
@@ -65,12 +57,10 @@ public class SecurityConfig {
                                 return;
                             }
 
-                            // --- STEP 2: DATABASE SYNC & SMART REDIRECT ---
                             try {
                                 Optional<User> existingUserOpt = userRepository.findByEmail(email);
 
                                 if (existingUserOpt.isEmpty()) {
-                                    logger.info(">>> [DATABASE] New Account! Initializing with 50 points...");
                                     User newUser = new User();
                                     newUser.setEmail(email);
                                     newUser.setName(name);
@@ -80,19 +70,15 @@ public class SecurityConfig {
 
                                     java.util.Random random = new java.util.Random();
                                     Long generatedId;
-
                                     do {
                                         generatedId = (long) (10000 + random.nextInt(90000));
                                     } while (userRepository.existsById(generatedId));
 
                                     newUser.setId(generatedId);
                                     userRepository.save(newUser);
-
                                     response.sendRedirect(frontendUrl + "/setup");
                                 } else {
                                     User existingUser = existingUserOpt.get();
-                                    logger.info(">>> [DATABASE] Returning User: {}", existingUser.getName());
-
                                     if (existingUser.getGender() == null
                                             || existingUser.getGender().equals("Pending")) {
                                         response.sendRedirect(frontendUrl + "/setup");
@@ -101,33 +87,35 @@ public class SecurityConfig {
                                     }
                                 }
                             } catch (Exception e) {
-                                logger.error(">>> [ERROR] Auth Logic Failure: {}", e.getMessage(), e);
+                                logger.error(">>> [ERROR] Auth Logic Failure: {}", e.getMessage());
                                 response.sendRedirect(frontendUrl + "/error");
                             }
                         }))
-
-                // --- 4. LOGOUT ---
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl(frontendUrl + "/")
                         .invalidateHttpSession(true)
-                        .clearAuthentication(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll());
 
         return http.build();
     }
 
-    // --- 5. CORS CONFIGURATION ---
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Use your specific Vercel URL (NO trailing slash)
-        configuration.setAllowedOrigins(Arrays.asList("https://campus-express-three.vercel.app"));
+
+        // Trust both the direct URL and whatever is in your properties
+        configuration.setAllowedOrigins(Arrays.asList(
+                "https://campus-express-three.vercel.app",
+                frontendUrl));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
-        // THIS IS THE KEY:
+
+        // Added "Cookie" to the allowed headers
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cookie", "X-Requested-With"));
+
+        // Allow cookies to be sent across different domains
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
