@@ -1,0 +1,83 @@
+2026-04-06T13:09:06.829Z [INFO] ----------------------invoke appmod-report-event----------------------
+2026-04-06T13:09:06.829Z [INFO] [Tool.invoke]({name: appmod-report-event, input: {
+  "projectPath": "m:\\projects\\delivery\\demo\\demo",
+  "event": "precheckCompleted",
+  "phase": "precheck",
+  "status": "succeeded"
+}}).
+2026-04-06T13:09:06.830Z [INFO] [Tool.invoke] do invoke.
+2026-04-06T13:09:06.834Z [INFO] Project m:\projects\delivery\demo\demo is a maven project, try to get java version from pom.xml
+2026-04-06T13:09:06.835Z [INFO] [Tool.invoke]({result: {
+  "message": "Event 'precheckCompleted' reported!\nSession ID: 20260406130906,\nSession Dir: m:\\projects\\delivery\\demo\\demo\\.github\\java-upgrade\\20260406130906"
+}}).
+2026-04-06T13:09:06.836Z [INFO] ----------------------invoked appmod-report-event----------------------
+2026-04-06T13:09:06.838Z [INFO] Project java version: 17
+2026-04-06T13:09:06.839Z [INFO] Maven project detected.
+2026-04-06T13:09:06.839Z [INFO] Build tool type: mvnw
+2026-04-06T13:09:07.151Z [INFO] JDK: undefined
+2026-04-06T13:09:07.151Z [ERROR] Failed to detect or resolve JDK for the project at m:\projects\delivery\demo\demo.
+2026-04-06T13:09:07.151Z [ERROR] [ReportEventTool] Failed to send project info telemetry: UserError: Failed to detect or resolve JDK for the project at m:\projects\delivery\demo\demo. Please ensure JDK 17 is installed and properly configured on the machine.
+2026-04-06T13:09:11.563Z [INFO] ---------------------prepare appmod-report-event----------------------
+2026-04-06T13:09:11.564Z [INFO] [Tool.prepareInvocation]({name: appmod-report-event, input: {
+  "sessionId": "20260406130906",
+  "projectPath": "m:\\projects\\delivery\\demo\\demo",
+  "event": "planGenerationStarted",
+  "phase": "plan",
+  "status": "succeeded"
+}}).
+2026-04-06T13:09:11.564Z [INFO] [Tool.prepareInvocation] do prepare invocation.
+2026-04-06T13:09:11.564Z [INFO] [Tool.prepareInvocation]({result: {
+  "invocationMessage": "Report upgrade event"
+}}).
+2026-04-06T13:09:11.564Z [INFO] ----------------------prepared appmod-report-event----------------------
+2026-04-06T13:09:11.601Z [INFO] ----------------------invoke appmod-report-event----------------------
+2026-04-06T13:09:11.601Z [INFO] [Tool.invoke]({name: appmod-report-event, input: {
+  "sessionId": "20260406130906",
+  "projectPath": "m:\\projects\\delivery\\demo\\demo",
+  "event": "planGenerationStarted",
+  "phase": "plan",
+  "status": "succeeded"
+}}).
+2026-04-06T13:09:11.601Z [INFO] [Tool.invoke] do invoke.
+2026-04-06T13:09:11.602Z [INFO] [Tool.invoke]({result: {
+  "message": "Event 'planGenerationStarted' reported!\nSession ID: 20260406130906,\nSession Dir: m:\\projects\\delivery\\demo\\demo\\.github\\java-upgrade\\20260406130906"
+}}).
+2026-04-06T13:09:11.602Z [INFO] ----------------------invoked appmod-report-event----------------------
+2026-04-06T13:09:21.715Z [INFO] ---------------------prepare appmod-list-jdks----------------------
+2026-04-06T13:09:21.715Z [INFO] [Tool.prepareInvocation]({name: appmod-list-jdks, input: {
+  "sessionId": "20260406130906"
+}}).
+2026-04-06T13:09:21.715Z [INFO] [Tool.prepareInvocation] do prepare invocation.
+2026-04-06T13:09:21.715Z [INFO] [Tool.prepareInvocation]({result: {
+  "invocationMessage": "List jdks"
+}}).
+2026-04-06T13:09:21.715Z [INFO] ----------------------prepared appmod-list-jdks----------------------
+2026-04-06T13:09:21.744Z [INFO] ----------------------invoke appmod-list-jdks----------------------
+2026-04-06T13:09:21.745Z [INFO] [Tool.invoke]({name: appmod-list-jdks, input: {
+  "sessionId": "20260406130906"
+}}).
+2026-04-06T13:09:21.745Z [INFO] [Tool.invoke] do invoke.
+2026-04-06T13:09:21.757Z [INFO] [Tool.invoke]({result: {
+  "message": "We found following jdks in your system:\n\n1. Java 20.0.2\n   📁 Path: C:\\Program Files\\Java\\jdk-20\\bin\n   🏷️ Source: others\n\nTotal: 1 JDK installation(s) found"
+}}).
+2026-04-06T13:09:21.757Z [INFO] ----------------------invoked appmod-list-jdks----------------------
+2026-04-06T13:09:26.370Z [INFO] ---------------------prepare appmod-list-mavens----------------------
+2026-04-06T13:09:26.370Z [INFO] [Tool.prepareInvocation]({name: appmod-list-mavens, input: {
+  "sessionId": "20260406130906",
+  "includeVersion": true
+}}).
+2026-04-06T13:09:26.370Z [INFO] [Tool.prepareInvocation] do prepare invocation.
+2026-04-06T13:09:26.370Z [INFO] [Tool.prepareInvocation]({result: {
+  "invocationMessage": "List mavens"
+}}).
+2026-04-06T13:09:26.370Z [INFO] ----------------------prepared appmod-list-mavens----------------------
+2026-04-06T13:09:26.412Z [INFO] ----------------------invoke appmod-list-mavens----------------------
+2026-04-06T13:09:26.413Z [INFO] [Tool.invoke]({name: appmod-list-mavens, input: {
+  "sessionId": "20260406130906",
+  "includeVersion": true
+}}).
+2026-04-06T13:09:26.413Z [INFO] [Tool.invoke] do invoke.
+2026-04-06T13:09:26.416Z [INFO] [Tool.invoke]({result: {
+  "message": "No Maven installations found."
+}}).
+2026-04-06T13:09:26.416Z [INFO] ----------------------invoked appmod-list-mavens----------------------
