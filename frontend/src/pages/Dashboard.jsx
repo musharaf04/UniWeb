@@ -367,7 +367,7 @@ export default function Dashboard() {
             <p
               style={{ margin: "0 0 16px", fontSize: "14px", color: "#6b7280" }}
             >
-              By using Campus Express you agree not to order:
+              By using UniWeb you agree not to order:
             </p>
             <ul
               style={{

@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
@@ -47,7 +48,7 @@ export default function Home() {
             letterSpacing: "-0.5px",
           }}
         >
-          Campus Express
+          UniWeb
         </h1>
         <p
           style={{
@@ -142,8 +143,21 @@ export default function Home() {
             marginTop: "24px",
           }}
         >
-          Campus Express · Secure · Private
+          UniWeb · Secure · Private
         </p>
+        <Link
+          to="/about"
+          style={{
+            display: "inline-block",
+            fontSize: "12px",
+            color: "#6b7280",
+            marginTop: "8px",
+            textDecoration: "none",
+            fontWeight: "500",
+          }}
+        >
+          Learn more about this project
+        </Link>
       </div>
     </div>
   );

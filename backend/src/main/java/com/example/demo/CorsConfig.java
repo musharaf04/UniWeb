@@ -1,26 +1,11 @@
 package com.example.demo;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration // Tells Spring Boot "Read this when you start up!"
+@Configuration 
 public class CorsConfig {
-
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/**") // Apply this to ALL endpoints (like /create, /all)
-                        // Allow requests from any frontend (React, Angular, Vue, Mobile)
-                        // Note: In a real company, you would change "*" to "http://yourwebsite.com"
-                        .allowedOriginPatterns("*") 
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*")
-                        .allowCredentials(true); // Allows cookies/tokens to be sent
-            }
-        };
-    }
+    // Disabled duplicate WebMvcConfigurer CORS setup
+    // Spring Security already strictly handles CORS in SecurityConfig.java.
+    // Specifying it in both places generates duplicate 'Access-Control-Allow-Origin' headers,
+    // which rigid browsers like Safari immediately block. 
 }

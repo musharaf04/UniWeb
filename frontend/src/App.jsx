@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import OrderPlacement from "./pages/OrderPlacement";
 import OrderChat from "./pages/OrderChat";
 import AuthSuccess from "./pages/AuthSuccess";
+import About from "./pages/About";
 
 function App() {
   return (
@@ -27,6 +28,9 @@ function App() {
 
         {/* Dedicated Chat Route */}
         <Route path="/chat/:orderId" element={<OrderChat />} />
+
+        {/* About Page */}
+        <Route path="/about" element={<About />} />
 
         {/* Error Pages - Kept from previous version */}
         <Route
