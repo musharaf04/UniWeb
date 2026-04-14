@@ -121,12 +121,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(
-                "https://campus-express-three.vercel.app",
-                frontendUrl));
+        // CORS origin is controlled by the FRONTEND_URL environment variable in Render.
+        // Set FRONTEND_URL=https://campus-express-three.vercel.app in Render dashboard.
+        configuration.setAllowedOrigins(Arrays.asList(frontendUrl));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-
-        // ADDED "Authorization" TO THE HEADERS LIST
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cookie", "X-Requested-With"));
         configuration.setAllowCredentials(true);
 
