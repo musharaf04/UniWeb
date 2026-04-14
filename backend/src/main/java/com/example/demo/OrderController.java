@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -24,11 +26,24 @@ public class OrderController {
     @Autowired
     private UserRepository userRepository;
 
+    private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
+
+    private String getEmail(Object principal) {
+        if (principal instanceof OAuth2User) {
+            return ((OAuth2User) principal).getAttribute("email");
+        } else if (principal instanceof String) {
+            return (String) principal;
+        }
+        return null;
+    }
+
     @PostMapping("/place")
     public ResponseEntity<?> placeOrder(@RequestBody Map<String, String> payload,
-            @AuthenticationPrincipal OAuth2User principal) {
+            @AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            Order newOrder = orderService.placeOrder(payload, principal.getAttribute("email"));
+            Order newOrder = orderService.placeOrder(payload, email);
             return ResponseEntity.ok(newOrder);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
@@ -36,25 +51,33 @@ public class OrderController {
     }
 
     @GetMapping("/my-orders")
-    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal OAuth2User principal) {
-        return ResponseEntity.ok(orderService.getMyOrders(principal.getAttribute("email")));
+    public ResponseEntity<List<Order>> getMyOrders(@AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(orderService.getMyOrders(email));
     }
 
     @GetMapping("/my-deliveries")
-    public ResponseEntity<List<Order>> getMyDeliveries(@AuthenticationPrincipal OAuth2User principal) {
-        return ResponseEntity.ok(orderService.getMyDeliveries(principal.getAttribute("email")));
+    public ResponseEntity<List<Order>> getMyDeliveries(@AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(orderService.getMyDeliveries(email));
     }
 
     @GetMapping("/available")
-    public ResponseEntity<List<Order>> getAvailableOrders(@AuthenticationPrincipal OAuth2User principal) {
-        return ResponseEntity.ok(orderService.getAvailableOrders(principal.getAttribute("email")));
+    public ResponseEntity<List<Order>> getAvailableOrders(@AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(orderService.getAvailableOrders(email));
     }
 
     @PostMapping("/propose/{orderId}")
     public ResponseEntity<?> propose(@PathVariable Long orderId, @RequestBody Map<String, String> payload,
-            @AuthenticationPrincipal OAuth2User principal) {
+            @AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
+        if (email == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         try {
-            Order o = orderService.proposeOrder(orderId, payload, principal.getAttribute("email"));
+            Order o = orderService.proposeOrder(orderId, payload, email);
             return ResponseEntity.ok(o);
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
@@ -64,8 +87,8 @@ public class OrderController {
     // Only the customer who owns the order can confirm the handshake
     @PostMapping("/confirm-handshake/{orderId}")
     public ResponseEntity<?> confirm(@PathVariable Long orderId,
-            @AuthenticationPrincipal OAuth2User principal) {
-        String email = principal.getAttribute("email");
+            @AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
         Optional<Order> orderOpt = orderRepository.findById(orderId);
 
         if (orderOpt.isEmpty()) {
@@ -84,8 +107,8 @@ public class OrderController {
     // Only the customer who owns the order can reject the handshake
     @PostMapping("/reject-handshake/{orderId}")
     public ResponseEntity<?> rejectHandshake(@PathVariable Long orderId,
-            @AuthenticationPrincipal OAuth2User principal) {
-        String email = principal.getAttribute("email");
+            @AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
         Optional<Order> orderOpt = orderRepository.findById(orderId);
 
         if (orderOpt.isEmpty()) {
@@ -105,8 +128,8 @@ public class OrderController {
     @PostMapping("/complete/{orderId}")
     public ResponseEntity<?> completeOrder(@PathVariable Long orderId,
             @RequestBody Map<String, String> payload,
-            @AuthenticationPrincipal OAuth2User principal) {
-        String email = principal.getAttribute("email");
+            @AuthenticationPrincipal Object principal) {
+        String email = getEmail(principal);
         Optional<Order> orderOpt = orderRepository.findById(orderId);
 
         if (orderOpt.isEmpty()) {
@@ -138,8 +161,18 @@ public class OrderController {
     @PostMapping("/{orderId}/chat/send")
     public ResponseEntity<?> sendMessage(@PathVariable Long orderId,
             @RequestBody Map<String, String> payload,
-            @AuthenticationPrincipal OAuth2User p) {
-        orderService.sendMessage(orderId, payload.get("text"), p.getAttribute("name"), p.getAttribute("email"));
+            @AuthenticationPrincipal Object p) {
+        String email = getEmail(p);
+        String name = (p instanceof OAuth2User) ? ((OAuth2User) p).getAttribute("name") : null;
+        
+        if (name == null && email != null) {
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                name = user.getName();
+            }
+        }
+        
+        orderService.sendMessage(orderId, payload.get("text"), name, email);
         return ResponseEntity.ok().build();
     }
 }

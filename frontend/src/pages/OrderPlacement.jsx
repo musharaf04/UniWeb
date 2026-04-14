@@ -15,6 +15,7 @@ export default function OrderPlacement() {
   const [roomNumber, setRoomNumber] = useState("");
   const [isOrdering, setIsOrdering] = useState(false);
   const [orderError, setOrderError] = useState("");
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [userGender, setUserGender] = useState("");
   const [activeDeliverers, setActiveDeliverers] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -120,7 +121,10 @@ export default function OrderPlacement() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not place order");
-        navigate("/dashboard");
+        setShowSuccessPopup(true);
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 5000);
       })
       .catch((err) => {
         setOrderError(err.message);
@@ -231,6 +235,66 @@ export default function OrderPlacement() {
             flexWrap: "wrap",
           }}
         >
+          {/* Modal / Notifications */}
+          {showSuccessPopup && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                backgroundColor: "rgba(0,0,0,0.6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "20px",
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: "#ffffff",
+                  borderRadius: "16px",
+                  padding: "40px 24px",
+                  width: "100%",
+                  maxWidth: "340px",
+                  textAlign: "center",
+                  boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+                }}
+              >
+                <div
+                  style={{
+                    width: "64px",
+                    height: "64px",
+                    backgroundColor: "#dcfce7",
+                    color: "#16a34a",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "32px",
+                    margin: "0 auto 20px",
+                  }}
+                >
+                  ✓
+                </div>
+                <h3
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: "20px",
+                    color: "#111827",
+                    fontWeight: "700",
+                  }}
+                >
+                  Order placed successfully!
+                </h3>
+                <p
+                  style={{ margin: "0", fontSize: "15px", color: "#6b7280" }}
+                >
+                  Redirecting to dashboard...
+                </p>
+              </div>
+            </div>
+          )}
+
           <div
             style={{
               display: "inline-flex",

@@ -53,8 +53,9 @@ export default function OrderChat() {
             const found = orders.find((o) => o.id === parseInt(orderId));
             if (found) {
               setOrderDetail(found);
-              if (found.status === "COMPLETED") {
+              if (found.status === "COMPLETED" && !showCompletedPopup) {
                 setShowCompletedPopup(true);
+                setTimeout(() => navigate("/dashboard"), 3000);
               }
             }
           }).catch(() => {});
@@ -111,7 +112,10 @@ export default function OrderChat() {
     }).then(async (res) => {
       if (res.ok) {
         setShowOtpModal(false);
-        setShowCompletedPopup(true);
+        if (!showCompletedPopup) {
+          setShowCompletedPopup(true);
+          setTimeout(() => navigate("/dashboard"), 3000);
+        }
       } else {
         const d = await res.json().catch(() => ({}));
         setOtpInput("");
@@ -191,23 +195,6 @@ export default function OrderChat() {
             >
               Thank you for using UniWeb. Points have been automatically transferred.
             </p>
-            <button
-              onClick={() => navigate("/dashboard")}
-              style={{
-                width: "100%",
-                padding: "14px",
-                borderRadius: "10px",
-                border: "none",
-                backgroundColor: "#111827",
-                color: "#ffffff",
-                fontWeight: "600",
-                fontSize: "15px",
-                cursor: "pointer",
-                fontFamily: "'Segoe UI', system-ui, sans-serif",
-              }}
-            >
-              Okay
-            </button>
           </div>
         </div>
       )}

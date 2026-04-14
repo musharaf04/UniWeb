@@ -1045,7 +1045,7 @@ export default function Dashboard() {
             letterSpacing: "-0.3px",
           }}
         >
-          Campus Express
+          UniWeb
         </span>
         <div
           style={{

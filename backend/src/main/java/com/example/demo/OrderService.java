@@ -127,11 +127,14 @@ public class OrderService {
     public List<Map<String, String>> getChat(Long orderId) {
         List<Message> messages = messageRepository.findByOrderIdOrderByTimestampAsc(orderId);
 
-        // Translate the database rows into the exact JSON format React expects
-        return messages.stream().map(m -> Map.of(
-                "sender", m.getSenderName(),
-                "email", m.getSenderEmail(),
-                "text", m.getText())).toList();
+        // Translate the database rows into JSON safely handling potential nulls
+        return messages.stream().map(m -> {
+            Map<String, String> map = new java.util.HashMap<>();
+            map.put("sender", m.getSenderName() != null ? m.getSenderName() : "Unknown");
+            map.put("email", m.getSenderEmail() != null ? m.getSenderEmail() : "unknown@example.com");
+            map.put("text", m.getText() != null ? m.getText() : "");
+            return map;
+        }).toList();
     }
 
     public void sendMessage(Long orderId, String text, String senderName, String senderEmail) {
