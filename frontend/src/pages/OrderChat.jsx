@@ -15,6 +15,7 @@ export default function OrderChat() {
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpInput, setOtpInput] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [showCompletedPopup, setShowCompletedPopup] = useState(false);
 
   const messagesEndRef = useRef(null);
   const prevChatLengthRef = useRef(0);
@@ -41,9 +42,26 @@ export default function OrderChat() {
 
   useEffect(() => {
     fetchChat();
-    const interval = setInterval(fetchChat, 3000);
+    const interval = setInterval(() => {
+      fetchChat();
+      
+      // Poll order details so the customer knows when it's completed
+      if (token && userData) {
+        fetch(`${API}/api/orders/my-orders`, { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json())
+          .then((orders) => {
+            const found = orders.find((o) => o.id === parseInt(orderId));
+            if (found) {
+              setOrderDetail(found);
+              if (found.status === "COMPLETED") {
+                setShowCompletedPopup(true);
+              }
+            }
+          }).catch(() => {});
+      }
+    }, 3000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, token, userData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -93,7 +111,7 @@ export default function OrderChat() {
     }).then(async (res) => {
       if (res.ok) {
         setShowOtpModal(false);
-        navigate("/dashboard");
+        setShowCompletedPopup(true);
       } else {
         const d = await res.json().catch(() => ({}));
         setOtpInput("");
@@ -117,6 +135,83 @@ export default function OrderChat() {
         flexDirection: "column",
       }}
     >
+      {/* Order Completed Modal */}
+      {showCompletedPopup && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              borderRadius: "16px",
+              padding: "40px 24px",
+              width: "100%",
+              maxWidth: "340px",
+              textAlign: "center",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                backgroundColor: "#dcfce7",
+                color: "#16a34a",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "32px",
+                margin: "0 auto 20px",
+              }}
+            >
+              ✓
+            </div>
+            <h3
+              style={{
+                margin: "0 0 10px",
+                fontSize: "20px",
+                color: "#111827",
+                fontWeight: "700",
+              }}
+            >
+              Order completed!
+            </h3>
+            <p
+              style={{ margin: "0 0 28px", fontSize: "15px", color: "#6b7280" }}
+            >
+              Thank you for using UniWeb. Points have been automatically transferred.
+            </p>
+            <button
+              onClick={() => navigate("/dashboard")}
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "10px",
+                border: "none",
+                backgroundColor: "#111827",
+                color: "#ffffff",
+                fontWeight: "600",
+                fontSize: "15px",
+                cursor: "pointer",
+                fontFamily: "'Segoe UI', system-ui, sans-serif",
+              }}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* OTP Modal */}
       {showOtpModal && (
         <div
