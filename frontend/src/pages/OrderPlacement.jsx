@@ -5,6 +5,7 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
 export default function OrderPlacement() {
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
   const [itemDescription, setItemDescription] = useState("");
   const [pickupLocation, setPickupLocation] = useState("");
@@ -76,7 +77,7 @@ export default function OrderPlacement() {
   const pickupOptions = [...dropOffOptions];
 
   useEffect(() => {
-    fetch(`${API}/api/user/me`, { credentials: "include" })
+    fetch(`${API}/api/user/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => {
         setUserGender(d.gender);
@@ -84,7 +85,7 @@ export default function OrderPlacement() {
       })
       .catch(() => navigate("/"));
 
-    fetch(`${API}/api/user/active-count`, { credentials: "include" })
+    fetch(`${API}/api/user/active-count`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setActiveDeliverers)
       .catch(() => {});
@@ -106,8 +107,10 @@ export default function OrderPlacement() {
 
     fetch(`${API}/api/orders/place`, {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { 
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify({
         itemDescription,
         pickupAddress: finalPickup,

@@ -6,6 +6,7 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:8080";
 export default function OrderChat() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const token = localStorage.getItem("token");
 
   const [userData, setUserData] = useState(null);
   const [activeChat, setActiveChat] = useState([]);
@@ -19,12 +20,12 @@ export default function OrderChat() {
   const prevChatLengthRef = useRef(0);
 
   useEffect(() => {
-    fetch(`${API}/api/user/me`, { credentials: "include" })
+    fetch(`${API}/api/user/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setUserData)
       .catch(() => navigate("/"));
 
-    fetch(`${API}/api/orders/my-orders`, { credentials: "include" })
+    fetch(`${API}/api/orders/my-orders`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((orders) => {
         const found = orders.find((o) => o.id === parseInt(orderId));
@@ -33,7 +34,7 @@ export default function OrderChat() {
   }, [navigate, orderId]);
 
   const fetchChat = () => {
-    fetch(`${API}/api/orders/${orderId}/chat`, { credentials: "include" })
+    fetch(`${API}/api/orders/${orderId}/chat`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setActiveChat);
   };
@@ -62,8 +63,10 @@ export default function OrderChat() {
     if (!chatInput.trim()) return;
     fetch(`${API}/api/orders/${orderId}/chat/send`, {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify({ text: chatInput }),
     }).then(() => {
       setChatInput("");
@@ -82,8 +85,10 @@ export default function OrderChat() {
     if (otpInput.length !== 4) return;
     fetch(`${API}/api/orders/complete/${orderId}`, {
       method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
       body: JSON.stringify({ otp: otpInput }),
     }).then(async (res) => {
       if (res.ok) {
